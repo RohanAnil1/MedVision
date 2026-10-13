@@ -2,9 +2,9 @@
 
 Date: 2026-10-13. Development host: Windows x86-64, Python 3.10.11, Node 24.13.0.
 
-- `python -m pytest backend/tests -q`: 24 passed. Known synthetic DICOM values validate signed rescaling, volume sorting, MPR, oblique sampling, MIP/MinIP/AIP, duplicate handling, archive restart, storage changes, partial imports, local API access controls, calibrated length/angles/ROI, exports, real generated DICOMDIR media, portable-path rejection, and RLE/JPEG-LS/JPEG2000 lossless round trips.
+- `python -m pytest backend/tests -q`: 29 passed. Existing import/security/imaging/measurement tests plus patient-axis reconstructions for aligned, rotated and tilted acquisitions, projection reductions and bounded read-only cache reuse/invalidation are verified.
 - `npm run build`: TypeScript check and production Vite build pass. Local assets include decoder workers and five WASM codecs. Warnings about large chunks and Node-only codec branches remain; compressed image browser tests are still required.
-- `npm run test:browser`: one end-to-end test passes using Playwright Chromium 134 with SwiftShader. Real DICOM stack, slice navigation, window preset, rotation, metadata, length drawing/persistence, PDF download, axial MPR, 3D volume, CPU stack, compressed RLE/JPEG-LS/JPEG2000 stacks, and page reload are exercised. Visible pixel checks prevent a blank canvas from passing. External browser requests are intercepted and rejected; zero are attempted in this scenario.
+- `npm run test:browser`: one end-to-end test passes using Playwright Chromium 134 with software fallback permitted. It exercises the original stack/measurement/export/codec workflow plus GPU projection switching, CPU MPR/MIP/MinIP/AIP, oblique pitch changes and PNG download. Visible pixel checks prevent a blank canvas from passing. External browser requests are intercepted and rejected; zero are attempted in this scenario. Renderer identity is recorded separately by native hardware smoke tests.
 - `npm run api:types`: OpenAPI and TypeScript declarations generated from the actual API.
 - `node tests/desktop/smoke.mjs`: Electron 44.7 development smoke passes for archive, DICOM stack, 3D volume, and renderer isolation. Temporary synthetic studies are used, not patient data.
 - `scripts/build-backend.ps1`: PyInstaller Windows x64 onedir backend build completes. Packaged runtime verification is a separate gate.
@@ -15,3 +15,11 @@ Date: 2026-10-13. Development host: Windows x86-64, Python 3.10.11, Node 24.13.0
 - `scripts/benchmark.py`: a synthetic 128×256×256 signed CT phantom (16.9 MB originals, 32 MiB float32 volume) imported in 0.946 s and reconstructed in 0.251 s on this host. Mean coronal extraction was 0.010 ms and full axial MIP 2.894 ms. These are backend CPU timings, not UI or GPU latency targets.
 
 This record does not certify clinical use, compressed syntax coverage, all offline workflows, child-process egress, physical GPU performance, packaged installers, Windows 10/11 separately, or macOS. These gates remain open in FEATURES.md.
+
+## Patient-space reconstruction and native graphics update
+
+- Frontend analytic test verifies the oblique basis is orthonormal and centered in patient coordinates.
+- The API exposes typed volume and reconstruction geometry through generated OpenAPI declarations.
+- CPU reconstruction grids preserve calibrated aspect ratios. Projection samples outside the acquired volume are excluded, including from AIP averages.
+- Native hardware smoke runs query the actual WebGL renderer: Intel Graphics D3D11 and NVIDIA GeForce RTX 5060 Laptop GPU D3D11. NVIDIA is selected with the process-local high-performance GPU switch. See graphics-windows.json and graphics-windows-discrete.json for recorded capabilities and limits.
+- Native smoke now exercises oblique reconstruction and pitch changes in addition to stack, 3D rendering and renderer isolation. Hardware evidence covers one host and a synthetic five-slice phantom, not the full platform or performance matrix.

@@ -16,13 +16,13 @@ Statuses distinguish source implementation from verified runtime behavior. No fu
 | Multi-viewport comparison | Independent viewport selection implemented; synchronization pending |
 | Length/angle/Cobb/ROI tools | Analytic length/angle/Cobb/rectangle ROI tests pass; browser length drawing/save passes; other interactive tools need acceptance |
 | Annotation persistence | Stack annotation save/restore and measurement panel implemented; length survives browser reload |
-| MPR, MIP/MinIP/AIP, oblique | Backend analytic phantom tests pass; interactive oblique/projection UI pending |
-| GPU 3D rendering | Synthetic volume visibly renders in Chromium/SwiftShader; physical GPU qualification pending |
+| MPR, MIP/MinIP/AIP, oblique | Interactive GPU projections and CPU patient-axis MPR/projections implemented; oblique yaw/pitch/offset controls and PNG export pass browser tests; rotated/tilted acquisition correctness verified analytically; reconstructed-plane annotation persistence pending |
+| GPU 3D rendering | Synthetic volume visibly renders in Chromium and native Intel/NVIDIA D3D11 smoke paths; full physical GPU/performance qualification pending |
 | Transfer functions/crop/clip | Initial CT transfer function implemented; interactive controls pending |
-| CPU stack fallback | Visible pixel rendering verified in Chromium test |
+| CPU stack fallback | Hardware capability detection selects CPU when needed; visible CPU stack/MPR/oblique rendering verified in Chromium tests; complete GPU-unavailable workflow and software 3D acceptance pending |
 | Software volume rendering | Pending |
 | Background processing and cancellation | Import worker/job API implemented; cancellation stress tests pending |
-| Progressive volumes/cache/memory limits | Input/volume limits and frontend cache cap implemented; progressive loading pending |
+| Progressive volumes/cache/memory limits | Input/volume limits, frontend cache cap, derived-slice cleanup and bounded read-only backend volume cache implemented; cache reuse/invalidation/budget tests pass; progressive loading and aggregate memory stress pending |
 | PET-CT fusion/registration/SUV | Pending |
 | DSA/time-intensity curves | Pending |
 | Modality compatibility beyond CT/MR | Pending fixture acceptance |
@@ -34,7 +34,7 @@ Statuses distinguish source implementation from verified runtime behavior. No fu
 | Windows EXE/installer | Unsigned NSIS installer and bundled EXE built; development and packaged EXE launch/stack/volume/isolation smoke pass; packaged launch also passes without Python/Node on PATH; clean-machine installer acceptance pending |
 | macOS app/DMG ARM64/Intel | Build scripts/configuration implemented; native validation pending |
 | Dependency versions/licenses | Exact direct pins, npm lock, Windows Python 3.10 transitive lock, license inventories generated; macOS locks/publisher license review pending |
-| Platform/GPU/performance matrix | Reproducible Windows CPU benchmark recorded for 128×256×256 CT phantom; physical GPU/large-study/macOS qualification pending |
+| Platform/GPU/performance matrix | Windows CPU benchmark recorded for 128×256×256 CT phantom; native Intel and NVIDIA RTX 5060 D3D11 smoke paths verified; AMD, large-study/multi-GPU performance and macOS qualification pending |
 
 ## Release gates
 

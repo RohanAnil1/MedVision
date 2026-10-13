@@ -72,3 +72,25 @@ class SettingsResponse(BaseModel):
     storage_path: str
     networking_enabled: bool
     max_volume_bytes: int
+
+
+class ReconstructionGridResponse(BaseModel):
+    plane: Literal["axial", "coronal", "sagittal"]
+    origin: tuple[float, float, float]
+    u: tuple[float, float, float]
+    v: tuple[float, float, float]
+    normal_axis: int
+    rows: int
+    columns: int
+    slice_count: int
+    spacing: tuple[float, float]
+    slice_spacing: float
+
+
+class VolumeGeometryResponse(BaseModel):
+    origin: tuple[float, float, float]
+    direction: list[float]
+    spacing: tuple[float, float, float]
+    dimensions: tuple[int, int, int]
+    frame_of_reference_uid: str
+    reconstruction: ReconstructionGridResponse

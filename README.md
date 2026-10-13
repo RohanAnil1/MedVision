@@ -32,6 +32,10 @@ The localhost launcher opens a temporary local launch page. Click **Open MedVisi
 
 Import a DICOM folder or files; then select a series in the archive. Stack tools use actual DICOM geometry and decoded pixels. Multiple viewports can show different series. MPR/3D require consistent spatial geometry; malformed, irregular and tilted series produce explicit errors. CPU stack mode is available; software 3D rendering is still pending.
 
+Axial/coronal/sagittal views offer slice, MIP, MinIP and AIP selection. The CPU option also enables local patient-axis reconstructions with physical aspect ratio. Oblique views use local resampling with yaw, pitch and offset controls and PNG export. For rotated acquisitions, these views follow patient LPS coordinates rather than merely relabeling array axes. A bounded read-only volume cache avoids decoding an unchanged series for every interaction.
+
+Windows selects its system graphics adapter by default. `MedVision.exe --force_high_performance_gpu` requests the discrete adapter; native smoke tests on the current host recorded Intel D3D11 and NVIDIA RTX 5060 D3D11 paths. This does not qualify other hardware or drivers.
+
 The saved-measurements toolbar button opens persisted stack measurements and CSV/JSON/PDF export. Measurements are calculated locally against their source images; missing calibration uses pixel units. Annotation persistence on reconstructed planes remains pending.
 
 The archive defaults to `%LOCALAPPDATA%/MedVision/` on Windows or `~/Library/Application Support/MedVision/` on macOS. `MEDVISION_DATA_DIR` overrides it for development/testing. Archive storage can be changed through the local settings API; existing studies stay where they were imported. Data is not uploaded. PACS remains disabled until its implementation and acceptance tests are complete.

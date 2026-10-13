@@ -277,6 +277,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/series/{series_uid}/geometry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Volume Geometry */
+        get: operations["volume_geometry_api_v1_series__series_uid__geometry_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/series/{series_uid}/volume": {
         parameters: {
             query?: never;
@@ -497,6 +514,47 @@ export interface components {
              */
             width: number;
         };
+        /** ReconstructionGridResponse */
+        ReconstructionGridResponse: {
+            /**
+             * Plane
+             * @enum {string}
+             */
+            plane: "axial" | "coronal" | "sagittal";
+            /** Origin */
+            origin: [
+                number,
+                number,
+                number
+            ];
+            /** U */
+            u: [
+                number,
+                number,
+                number
+            ];
+            /** V */
+            v: [
+                number,
+                number,
+                number
+            ];
+            /** Normal Axis */
+            normal_axis: number;
+            /** Rows */
+            rows: number;
+            /** Columns */
+            columns: number;
+            /** Slice Count */
+            slice_count: number;
+            /** Spacing */
+            spacing: [
+                number,
+                number
+            ];
+            /** Slice Spacing */
+            slice_spacing: number;
+        };
         /** SeriesResponse */
         SeriesResponse: {
             /** Series Uid */
@@ -551,6 +609,32 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** VolumeGeometryResponse */
+        VolumeGeometryResponse: {
+            /** Origin */
+            origin: [
+                number,
+                number,
+                number
+            ];
+            /** Direction */
+            direction: number[];
+            /** Spacing */
+            spacing: [
+                number,
+                number,
+                number
+            ];
+            /** Dimensions */
+            dimensions: [
+                number,
+                number,
+                number
+            ];
+            /** Frame Of Reference Uid */
+            frame_of_reference_uid: string;
+            reconstruction: components["schemas"]["ReconstructionGridResponse"];
         };
     };
     responses: never;
@@ -1076,6 +1160,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    volume_geometry_api_v1_series__series_uid__geometry_get: {
+        parameters: {
+            query?: {
+                plane?: string;
+            };
+            header?: never;
+            path: {
+                series_uid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VolumeGeometryResponse"];
                 };
             };
             /** @description Validation Error */

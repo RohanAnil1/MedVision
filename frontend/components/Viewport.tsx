@@ -23,9 +23,10 @@ export function Viewport({series, mode, active, onActive, onMetadata}: Props) {
   const [loading, setLoading] = useState(true)
   const [playing, setPlaying] = useState(false)
   const [version, setVersion] = useState(0)
-  const {tool, center, width, invert, cpu} = useViewer()
+  const {tool, center, width, invert, cpu, projection} = useViewer()
   const volumeId = useRef('')
   const cameraRotation = useRef(0)
+  const volumeGeometry=useRef<Geometry>()
   const getViewport = () => engine.current?.getViewport(viewportId.current)
 
   useEffect(() => {
@@ -65,6 +66,7 @@ export function Viewport({series, mode, active, onActive, onMetadata}: Props) {
       } else {
         const response = await request(`/series/${series.series_uid}/volume`, {signal: controller.signal})
         const geometry: Geometry = JSON.parse(response.headers.get('X-Image-Geometry')!)
+        volumeGeometry.current=geometry
         const bytes = await response.arrayBuffer()
         if (disposed) return
         volumeId.current = `medvision-volume:${crypto.randomUUID()}`
@@ -98,9 +100,10 @@ export function Viewport({series, mode, active, onActive, onMetadata}: Props) {
           },
         }], [viewportId.current])
         if (disposed) return
-        const axis = {axial: 2, coronal: 1, sagittal: 0}[mode as 'axial' | 'coronal' | 'sagittal']
-        setCount(mode === 'volume' ? 1 : geometry.dimensions[axis])
         currentEngine.getViewport(viewportId.current).resetCamera()
+        const viewport=getViewport() as core.VolumeViewport
+        setCount(mode==='volume'?1:viewport.getNumberOfSlices())
+        setIndex(mode==='volume'?0:viewport.getSliceIndex())
       }
       resize = new ResizeObserver(() => { if (!disposed) { currentEngine.resize(true, false); currentEngine.render() } })
       resize.observe(element.current!)
@@ -119,7 +122,12 @@ export function Viewport({series, mode, active, onActive, onMetadata}: Props) {
       element.current?.removeEventListener(core.Enums.Events.STACK_NEW_IMAGE, stackChanged)
       tools.ToolGroupManager.destroyToolGroup(groupId.current)
       engine.current?.destroy(); engine.current = undefined
-      if (volumeId.current) { core.cache.removeVolumeLoadObject(volumeId.current); volumeId.current = '' }
+      if (volumeId.current && core.cache.getVolume(volumeId.current)) {
+        const imageIds=[...core.cache.getVolume(volumeId.current)!.imageIds]
+        core.cache.removeVolumeLoadObject(volumeId.current)
+        for(const id of imageIds)if(core.cache.getImageLoadObject(id))core.cache.removeImageLoadObject(id)
+      }
+      volumeId.current = ''
     }
   }, [series.series_uid, mode, cpu])
 
@@ -139,6 +147,19 @@ export function Viewport({series, mode, active, onActive, onMetadata}: Props) {
     ;(viewport as core.StackViewport).setProperties({voiRange: {lower: center - width / 2, upper: center + width / 2}, invert})
     viewport.render()
   }, [center, width, invert, loading, version])
+
+  useEffect(()=>{
+    if(loading||!['axial','coronal','sagittal'].includes(mode)||!volumeGeometry.current)return
+    const viewport=getViewport() as core.VolumeViewport
+    if(!viewport)return
+    const geometry=volumeGeometry.current
+    const thickness=Math.hypot(...geometry.dimensions.map((n,i)=>n*geometry.spacing[i]))
+    const blend={slice:core.Enums.BlendModes.COMPOSITE,mip:core.Enums.BlendModes.MAXIMUM_INTENSITY_BLEND,minip:core.Enums.BlendModes.MINIMUM_INTENSITY_BLEND,aip:core.Enums.BlendModes.AVERAGE_INTENSITY_BLEND}[projection]
+    viewport.setBlendMode(blend)
+    if(projection==='slice')viewport.resetSlabThickness()
+    else viewport.setSlabThickness(thickness)
+    viewport.render()
+  },[projection,mode,loading,version])
 
   async function navigate(n: number) {
     if (loading || !count) return
@@ -178,7 +199,7 @@ export function Viewport({series, mode, active, onActive, onMetadata}: Props) {
     {error && <div className="viewport-message error" role="alert">{error}</div>}
     <div className="viewport-controls">
       <span className="text-xs text-slate-400">{count ? `${index + 1} / ${count}` : '—'}</span>
-      {mode !== 'volume' && <input aria-label="Slice" type="range" min={0} max={Math.max(0, count - 1)} value={index} onChange={e => void navigate(Number(e.target.value))}/>}
+      {mode !== 'volume' && <input aria-label="Slice" type="range" min={0} max={Math.max(0, count - 1)} value={index} disabled={mode!=='stack'&&projection!=='slice'} onChange={e => void navigate(Number(e.target.value))}/>}
       {mode === 'stack' && <Button size="icon" variant="ghost" title="Cine (10 fps)" onClick={() => setPlaying(!playing)} disabled={loading}>{playing ? <Pause size={15}/> : <Play size={15}/>}</Button>}
       <Button size="icon" variant="ghost" title="Rotate 90°" onClick={() => transform('rotate')}><RotateCw size={15}/></Button>
       <Button size="icon" variant="ghost" title="Flip horizontal" onClick={() => transform('horizontal')}><FlipHorizontal size={15}/></Button>

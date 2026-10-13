@@ -746,6 +746,55 @@
         }
       }
     },
+    "/api/v1/series/{series_uid}/geometry": {
+      "get": {
+        "summary": "Volume Geometry",
+        "operationId": "volume_geometry_api_v1_series__series_uid__geometry_get",
+        "parameters": [
+          {
+            "name": "series_uid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Series Uid"
+            }
+          },
+          {
+            "name": "plane",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "axial",
+              "title": "Plane"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VolumeGeometryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/series/{series_uid}/volume": {
       "get": {
         "summary": "Volume Data",
@@ -1351,6 +1400,118 @@
         ],
         "title": "ObliqueRequest"
       },
+      "ReconstructionGridResponse": {
+        "properties": {
+          "plane": {
+            "type": "string",
+            "enum": [
+              "axial",
+              "coronal",
+              "sagittal"
+            ],
+            "title": "Plane"
+          },
+          "origin": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Origin"
+          },
+          "u": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "U"
+          },
+          "v": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "V"
+          },
+          "normal_axis": {
+            "type": "integer",
+            "title": "Normal Axis"
+          },
+          "rows": {
+            "type": "integer",
+            "title": "Rows"
+          },
+          "columns": {
+            "type": "integer",
+            "title": "Columns"
+          },
+          "slice_count": {
+            "type": "integer",
+            "title": "Slice Count"
+          },
+          "spacing": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Spacing"
+          },
+          "slice_spacing": {
+            "type": "number",
+            "title": "Slice Spacing"
+          }
+        },
+        "type": "object",
+        "required": [
+          "plane",
+          "origin",
+          "u",
+          "v",
+          "normal_axis",
+          "rows",
+          "columns",
+          "slice_count",
+          "spacing",
+          "slice_spacing"
+        ],
+        "title": "ReconstructionGridResponse"
+      },
       "SeriesResponse": {
         "properties": {
           "series_uid": {
@@ -1505,6 +1666,85 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VolumeGeometryResponse": {
+        "properties": {
+          "origin": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Origin"
+          },
+          "direction": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Direction"
+          },
+          "spacing": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Spacing"
+          },
+          "dimensions": {
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Dimensions"
+          },
+          "frame_of_reference_uid": {
+            "type": "string",
+            "title": "Frame Of Reference Uid"
+          },
+          "reconstruction": {
+            "$ref": "#/components/schemas/ReconstructionGridResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "origin",
+          "direction",
+          "spacing",
+          "dimensions",
+          "frame_of_reference_uid",
+          "reconstruction"
+        ],
+        "title": "VolumeGeometryResponse"
       }
     }
   }

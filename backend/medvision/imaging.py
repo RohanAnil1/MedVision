@@ -178,3 +178,61 @@ def oblique(volume, geometry, origin, u, v, shape, spacing):
     ijk = np.einsum("ij,jhw->ihw", direction.T, patient - np.array(geometry["origin"])[:, None, None])
     ijk /= np.array(geometry["spacing"])[:, None, None]
     return map_coordinates(volume, ijk[::-1], order=1, mode="constant", cval=float(volume.min()))
+
+
+def patient_plane_geometry(geometry, plane):
+    axes = {"axial": (0, 1, 2), "coronal": (0, 2, 1), "sagittal": (1, 2, 0)}
+    if plane not in axes:
+        raise ImagingError("Unknown reconstruction plane.")
+    direction = np.array(geometry["direction"]).reshape(3, 3).T
+    dimensions, spacing = np.array(geometry["dimensions"]), np.array(geometry["spacing"])
+    corners = np.array([[x, y, z] for x in (0, dimensions[0]-1) for y in (0, dimensions[1]-1) for z in (0, dimensions[2]-1)])
+    world = (corners * spacing) @ direction.T + geometry["origin"]
+    minimum, maximum = world.min(axis=0), world.max(axis=0)
+    # Effective sampling distance of the acquisition lattice along each patient axis.
+    step = 1 / np.sqrt(np.sum((direction.T / spacing[:, None]) ** 2, axis=0))
+    sizes = np.ceil((maximum - minimum) / step - 1e-6).astype(int) + 1
+    x, y, z = axes[plane]
+    if int(sizes[x]) * int(sizes[y]) > 4 * 1024 * 1024 or sizes[z] > 10000:
+        raise ImagingError("Reconstruction grid exceeds the processing budget.")
+    return {"plane": plane, "origin": minimum.tolist(), "u": np.eye(3)[x].tolist(), "v": np.eye(3)[y].tolist(),
+            "normal_axis": z, "rows": int(sizes[y]), "columns": int(sizes[x]), "slice_count": int(sizes[z]),
+            "spacing": [float(step[y]), float(step[x])], "slice_spacing": float(step[z])}
+
+
+def patient_reconstruction(volume, geometry, plane, index=0, projection="slice"):
+    grid = patient_plane_geometry(geometry, plane)
+    if projection not in ("slice", "mip", "minip", "aip"):
+        raise ImagingError("Unknown projection mode.")
+    if not 0 <= index < grid["slice_count"]:
+        raise ImagingError("Slice index is out of range.")
+    shape = (grid["rows"], grid["columns"])
+    direction = np.array(geometry["direction"]).reshape(3, 3).T
+    y, x = np.indices(shape)
+    base = np.array(grid["origin"])[:, None, None] + np.array(grid["u"])[:, None, None] * x * grid["spacing"][1] + np.array(grid["v"])[:, None, None] * y * grid["spacing"][0]
+    samples = [index] if projection == "slice" else range(grid["slice_count"])
+    if projection == "mip":
+        result = np.full(shape, -np.inf, dtype=np.float32)
+    elif projection == "minip":
+        result = np.full(shape, np.inf, dtype=np.float32)
+    else:
+        result = np.zeros(shape, dtype=np.float64)
+    counts = np.zeros(shape, dtype=np.uint16)
+    for sample in samples:
+        world = base.copy()
+        world[grid["normal_axis"]] += sample * grid["slice_spacing"]
+        ijk = np.einsum("ij,jhw->ihw", direction.T, world - np.array(geometry["origin"])[:, None, None]) / np.array(geometry["spacing"])[:, None, None]
+        valid = np.all((ijk >= -1e-5) & (ijk <= (np.array(geometry["dimensions"])-1)[:, None, None] + 1e-5), axis=0)
+        ijk = np.clip(ijk, 0, (np.array(geometry["dimensions"])-1)[:, None, None])
+        image = map_coordinates(volume, ijk[::-1], order=1, mode="nearest")
+        if projection == "mip":
+            np.maximum(result, np.where(valid, image, -np.inf), out=result)
+        elif projection == "minip":
+            np.minimum(result, np.where(valid, image, np.inf), out=result)
+        else:
+            result += np.where(valid, image, 0)
+        counts += valid.astype(np.uint16)
+    if projection == "aip":
+        np.divide(result, counts, out=result, where=counts > 0)
+    result[counts == 0] = float(volume.min())
+    return result.astype(np.float32), grid

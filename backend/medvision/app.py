@@ -15,10 +15,11 @@ from pydantic import BaseModel, Field
 
 from .archive import Archive, ImagingError
 from .config import Config
-from .imaging import build_volume, oblique, pixels, png, reconstruct, window
+from .imaging import oblique, pixels, png, patient_reconstruction, patient_plane_geometry, window
 from .jobs import Jobs
 from .measurements import calculate, measurement_csv, measurement_pdf
-from .models import InstanceResponse, StudyResponse, JobResponse, SettingsResponse
+from .models import InstanceResponse, StudyResponse, JobResponse, SettingsResponse, VolumeGeometryResponse
+from .volume_cache import VolumeCache
 
 
 class StorageRequest(BaseModel):
@@ -63,10 +64,12 @@ def safe_relative(name):
 def create_app(config=None):
     config = config or Config.environment()
     archive, jobs = Archive(config), Jobs()
+    volumes=VolumeCache(archive)
     @asynccontextmanager
     async def lifespan(app):
         yield
         jobs.close()
+        volumes.clear()
     app = FastAPI(title="MedVision Local API", version="0.1.0", docs_url=None, redoc_url=None, lifespan=lifespan)
     app.state.archive, app.state.jobs = archive, jobs
     app.add_middleware(CORSMiddleware, allow_origins=[config.origin], allow_methods=["GET", "POST", "PUT", "DELETE"],
@@ -252,20 +255,25 @@ def create_app(config=None):
 
     @app.get("/api/v1/series/{series_uid}/reconstruction")
     def reconstruction(series_uid: str, plane: str = "axial", index: int = 0, projection: str = "slice", center: float = 40, width: float = 400):
-        volume, geometry = build_volume(archive, series_uid)
-        image = reconstruct(volume, plane, index, projection)
-        return Response(png(window(image, center, width)), media_type="image/png", headers={"X-Image-Geometry": json.dumps(geometry)})
+        volume, geometry = volumes.get(series_uid)
+        image, grid = patient_reconstruction(volume, geometry, plane, index, projection)
+        return Response(png(window(image, center, width)), media_type="image/png", headers={"X-Image-Geometry": json.dumps({**geometry, "reconstruction": grid})})
+
+    @app.get("/api/v1/series/{series_uid}/geometry", response_model=VolumeGeometryResponse)
+    def volume_geometry(series_uid: str, plane: str = "axial"):
+        volume, geometry = volumes.get(series_uid)
+        return {**geometry, "reconstruction": patient_plane_geometry(geometry, plane)}
 
     @app.get("/api/v1/series/{series_uid}/volume")
     def volume_data(series_uid: str):
-        volume, geometry = build_volume(archive, series_uid)
+        volume, geometry = volumes.get(series_uid)
         return Response(volume.astype("<f4", copy=False).tobytes(), media_type="application/octet-stream", headers={"X-Image-Geometry": json.dumps(geometry), "X-Pixel-Dtype": "float32"})
 
     @app.post("/api/v1/series/{series_uid}/oblique")
     def oblique_image(series_uid: str, body: ObliqueRequest):
         if any(s <= 0 or not np.isfinite(s) for s in body.spacing):
             raise ImagingError("Spacing must be finite and positive.")
-        volume, geometry = build_volume(archive, series_uid)
+        volume, geometry = volumes.get(series_uid)
         image = oblique(volume, geometry, body.origin, body.u, body.v, (body.rows, body.columns), body.spacing)
         return Response(png(window(image, body.center, body.width)), media_type="image/png")
 
