@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Activity, FolderOpen, Upload, Search, ShieldCheck, Grid2X2, Square, Move, ZoomIn, Sun, Ruler, Triangle, ScanLine, Circle, Info, Layers, Box, X } from 'lucide-react'
+import { Activity, FolderOpen, Upload, Search, ShieldCheck, Grid2X2, Square, Move, ZoomIn, Sun, Ruler, Triangle, ScanLine, Circle, Info, Layers, Box, X, Settings as SettingsIcon } from 'lucide-react'
 import { Button } from './components/ui/button'
 import { Viewport } from './components/Viewport'
 import { json, setSession, type Job, type Series, type Study } from './lib/api'
@@ -7,6 +7,7 @@ import { useViewer, type Mode, type Tool } from './lib/store'
 import { Measurements } from './components/Measurements'
 import { Reconstruction } from './components/Reconstruction'
 import { initializeImaging, preferredCPURendering } from './lib/cornerstone'
+import {Settings} from './components/Settings'
 
 const toolOptions: {name: Tool; label: string; icon: typeof Move}[] = [
   {name:'WindowLevel',label:'Window / level',icon:Sun},{name:'Pan',label:'Pan',icon:Move},{name:'Zoom',label:'Zoom',icon:ZoomIn},
@@ -27,6 +28,7 @@ export function App() {
   const [metadata, setMetadata] = useState<Record<string, unknown> | null>(null)
   const [showInfo, setShowInfo] = useState(false)
   const [showMeasurements,setShowMeasurements]=useState(false)
+  const [showSettings,setShowSettings]=useState(false)
   const uploadRef = useRef<HTMLInputElement>(null)
   const folderRef = useRef<HTMLInputElement>(null)
   const viewer = useViewer()
@@ -76,15 +78,17 @@ export function App() {
   }
   const importing = job?.status === 'queued' || job?.status === 'running'
   const filtered = studies.filter(study => JSON.stringify(study).toLowerCase().includes(query.toLowerCase()))
+  const toolAvailable=(tool:Tool)=>mode==='volume'?['Pan','Zoom'].includes(tool):mode==='oblique'||(viewer.cpu&&['axial','coronal','sagittal'].includes(mode))?false:true
   return <div className="workstation">
     <header className="app-header"><div className="brand"><div className="brand-icon"><Activity size={23}/></div><div><strong>MedVision</strong><small>IMAGING WORKSTATION</small></div></div>
       <div className="privacy"><ShieldCheck size={15}/> Fully local <span>·</span> Research & education</div>
       <Button variant="default" onClick={() => folderRef.current?.click()} disabled={!connected || importing}><FolderOpen size={16}/> Import folder</Button>
       <Button onClick={() => uploadRef.current?.click()} disabled={!connected || importing}><Upload size={16}/> Files</Button>
+      <Button size="icon" title="Workstation settings" disabled={!connected} onClick={()=>setShowSettings(true)}><SettingsIcon size={17}/></Button>
       <input ref={uploadRef} type="file" multiple className="hidden" onChange={e => void importFiles(e.target.files)}/>
       <input ref={folderRef} type="file" multiple {...{webkitdirectory: '', directory: ''}} className="hidden" onChange={e => void importFiles(e.target.files)}/>
     </header>
-    <div className="tool-row"><div className="tool-set">{toolOptions.map(item => <Button key={item.name} size="icon" title={item.label} aria-label={item.label} variant={viewer.tool === item.name ? 'default' : 'ghost'} onClick={() => viewer.setTool(item.name)}><item.icon size={18}/></Button>)}</div>
+    <div className="tool-row"><div className="tool-set">{toolOptions.map(item => <Button key={item.name} size="icon" title={toolAvailable(item.name)?item.label:mode==='volume'?'Use volume display controls; drag to rotate':'Use window fields and reconstruction controls'} aria-label={item.label} disabled={!toolAvailable(item.name)} variant={toolAvailable(item.name)&&viewer.tool === item.name ? 'default' : 'ghost'} onClick={() => viewer.setTool(item.name)}><item.icon size={18}/></Button>)}</div>
       <div className="divider"/><label>W <input type="number" min={1} value={viewer.width} onChange={e => viewer.setWindow(viewer.center, Math.max(1, Number(e.target.value)))}/></label><label>L <input type="number" value={viewer.center} onChange={e => viewer.setWindow(Number(e.target.value), viewer.width)}/></label>
       <select aria-label="Window preset" onChange={e => {const [c,w] = e.target.value.split(',').map(Number); viewer.setWindow(c,w)}} defaultValue="40,400"><option value="40,400">Soft tissue</option><option value="-600,1500">Lung</option><option value="400,1800">Bone</option><option value="40,80">Brain</option></select>
       <label><input type="checkbox" checked={viewer.invert} onChange={e => viewer.setInvert(e.target.checked)}/> Invert</label>
@@ -100,5 +104,6 @@ export function App() {
     </div>{showMeasurements&&slots[active]&&<Measurements seriesUID={slots[active]!.series_uid} onError={setError}/>}{showInfo && <aside className="metadata"><div className="section-heading">DICOM METADATA<Button size="icon" variant="ghost" onClick={() => setShowInfo(false)}><X size={15}/></Button></div>{metadata ? Object.entries(metadata).map(([tag,value]) => <div className="tag" key={tag}><code>{tag}</code><pre>{JSON.stringify(value,null,2)}</pre></div>) : <p>Select a stack image to inspect its metadata.</p>}</aside>}</main>
     {error && <div className="error-banner" role="alert"><span>{error}</span><Button size="icon" variant="ghost" aria-label="Dismiss error" onClick={() => setError('')}><X size={16}/></Button></div>}
     <footer className="status-bar"><span className={`status-dot ${connected?'connected':''}`}/><span>{connected ? status : 'Awaiting launch session'}</span>{importing && <><progress max={1} value={job.progress}/><Button variant="ghost" onClick={() => void json(`/jobs/${job.id}/cancel`,{method:'POST'})}>Cancel import</Button></>}<div className="flex-1"/><span>MedVision 0.1 · Platform qualification pending</span></footer>
+    {showSettings&&<Settings onClose={()=>setShowSettings(false)}/>}
   </div>
 }

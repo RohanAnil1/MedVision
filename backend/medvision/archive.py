@@ -72,10 +72,22 @@ class Archive:
             raise ImagingError("Storage location must be an absolute local path.")
         if str(target).startswith(("\\\\", "//")):
             raise ImagingError("Network storage is disabled.")
-        target.mkdir(parents=True, exist_ok=True)
-        probe = target / (".medvision-write-" + uuid.uuid4().hex)
-        probe.write_bytes(b"")
-        probe.unlink()
+        if os.name == "nt":
+            import ctypes
+            # Reject mapped network drives before accessing them.
+            if ctypes.windll.kernel32.GetDriveTypeW(ctypes.c_wchar_p(target.anchor)) == 4:
+                raise ImagingError("Network storage is disabled.")
+        resolved = target.resolve()
+        if str(resolved).startswith(("\\\\", "//")):
+            raise ImagingError("Network storage is disabled.")
+        target = resolved
+        try:
+            target.mkdir(parents=True, exist_ok=True)
+            probe = target / (".medvision-write-" + uuid.uuid4().hex)
+            probe.write_bytes(b"")
+            probe.unlink()
+        except OSError as exc:
+            raise ImagingError("The selected study storage folder is not writable.") from exc
         with self.lock, self.connect() as db:
             db.execute("INSERT OR REPLACE INTO settings VALUES('storage', ?)", (str(target.resolve()),))
         return str(target.resolve())

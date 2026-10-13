@@ -18,7 +18,7 @@ Statuses distinguish source implementation from verified runtime behavior. No fu
 | Annotation persistence | Stack annotation save/restore and measurement panel implemented; length survives browser reload |
 | MPR, MIP/MinIP/AIP, oblique | Interactive GPU projections and CPU patient-axis MPR/projections implemented; oblique yaw/pitch/offset controls and PNG export pass browser tests; rotated/tilted acquisition correctness verified analytically; reconstructed-plane annotation persistence pending |
 | GPU 3D rendering | Synthetic volume visibly renders in Chromium and native Intel/NVIDIA D3D11 smoke paths; full physical GPU/performance qualification pending |
-| Transfer functions/crop/clip | Initial CT transfer function implemented; interactive controls pending |
+| Transfer functions/crop/clip | Color presets, scalar threshold, opacity, lighting, sample quality, acquisition-axis crop bounds and arbitrary patient-space clipping implemented; analytic geometry tests and visible pixel/retained-side browser checks pass |
 | CPU stack fallback | Hardware capability detection selects CPU when needed; visible CPU stack/MPR/oblique rendering verified in Chromium tests; complete GPU-unavailable workflow and software 3D acceptance pending |
 | Software volume rendering | Pending |
 | Background processing and cancellation | Import worker/job API implemented; cancellation stress tests pending |
@@ -29,7 +29,7 @@ Statuses distinguish source implementation from verified runtime behavior. No fu
 | PNG export | Source implemented; acceptance pending |
 | Reports/measurement/video/mesh export | Measurement JSON/CSV/PDF implemented; backend export tests and browser PDF download pass; video/mesh pending |
 | PACS and local DICOMweb | Disabled; implementation pending |
-| Alternative storage | API implemented and tested; settings UI pending |
+| Alternative storage | Settings UI and isolated native folder-picker bridge implemented; browser location changes preserve old studies; native picker IPC tested with a mocked dialog result; invalid/unwritable/network-drive paths rejected and old setting preserved; native macOS permissions pending |
 | Offline launch/bootstrap | Browser bootstrap tested; exercised stack/MPR/3D/reload with non-loopback browser requests blocked (zero attempted); process/clean-machine tests pending |
 | Windows EXE/installer | Unsigned NSIS installer and bundled EXE built; development and packaged EXE launch/stack/volume/isolation smoke pass; packaged launch also passes without Python/Node on PATH; clean-machine installer acceptance pending |
 | macOS app/DMG ARM64/Intel | Build scripts/configuration implemented; native validation pending |

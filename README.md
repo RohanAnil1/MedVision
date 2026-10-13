@@ -36,6 +36,10 @@ Axial/coronal/sagittal views offer slice, MIP, MinIP and AIP selection. The CPU 
 
 Windows selects its system graphics adapter by default. `MedVision.exe --force_high_performance_gpu` requests the discrete adapter; native smoke tests on the current host recorded Intel D3D11 and NVIDIA RTX 5060 D3D11 paths. This does not qualify other hardware or drivers.
 
+In 3D mode, use Volume Display to change color preset, scalar threshold, opacity, lighting and sampling quality. Crop bounds follow the acquisition axes; the separate clipping plane uses patient-space yaw, pitch, offset and a reversible retained side. Reset restores the default display. Drag the view to rotate, or select Pan/Zoom for their primary mouse gestures.
+
+Workstation Settings lets you select a new local study-storage folder. Desktop mode offers a native folder picker; localhost mode accepts an absolute path. New imports use the selected folder. Existing originals remain at their original locations and remain accessible through the same archive index.
+
 The saved-measurements toolbar button opens persisted stack measurements and CSV/JSON/PDF export. Measurements are calculated locally against their source images; missing calibration uses pixel units. Annotation persistence on reconstructed planes remains pending.
 
 The archive defaults to `%LOCALAPPDATA%/MedVision/` on Windows or `~/Library/Application Support/MedVision/` on macOS. `MEDVISION_DATA_DIR` overrides it for development/testing. Archive storage can be changed through the local settings API; existing studies stay where they were imported. Data is not uploaded. PACS remains disabled until its implementation and acceptance tests are complete.

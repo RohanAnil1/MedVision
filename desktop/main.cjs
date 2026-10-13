@@ -37,6 +37,11 @@ else {
       mainWindow = new BrowserWindow({ show: process.env.MEDVISION_HEADLESS_TEST !== '1', width: 1500, height: 960, minWidth: 1000, minHeight: 650, backgroundColor: '#090e16', title: 'MedVision', webPreferences: { preload: path.join(__dirname, 'preload.cjs'), sandbox: true, contextIsolation: true, nodeIntegration: false } })
       const validSender = event => event.sender === mainWindow.webContents && event.senderFrame?.url === 'http://127.0.0.1:3000/'
       ipcMain.handle('medvision:session', event => { if (!validSender(event)) throw new Error('Invalid sender'); return token })
+      ipcMain.handle('medvision:choose-storage',async event=>{
+        if(!validSender(event))throw new Error('Invalid sender')
+        const result=await dialog.showOpenDialog(mainWindow,{title:'Choose local study storage',properties:['openDirectory','createDirectory']})
+        return result.canceled?null:result.filePaths[0]||null
+      })
       ipcMain.handle('medvision:save', async (event, name, bytes) => {
         if (!validSender(event) || !(bytes instanceof ArrayBuffer) || bytes.byteLength > 256 * 1024 * 1024) throw new Error('Invalid export')
         const result = await dialog.showSaveDialog(mainWindow, {defaultPath: path.basename(String(name))})

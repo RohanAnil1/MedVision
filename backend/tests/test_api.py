@@ -5,6 +5,7 @@ from medvision.app import create_app
 from medvision.app import safe_relative
 from medvision.archive import ImagingError
 import pytest
+import os
 
 
 def test_local_security_and_import(config, phantom):
@@ -69,3 +70,26 @@ def test_alternative_storage_preserves_old_studies(config, phantom, tmp_path):
 def test_portable_upload_paths(name):
     with pytest.raises(ImagingError):
         safe_relative(name)
+
+
+def test_storage_failures_preserve_previous_location(archive,tmp_path):
+    original=archive.storage
+    target=tmp_path/'existing-file'
+    target.write_text('not a directory')
+    with pytest.raises(ImagingError,match='not writable'):
+        archive.set_storage(str(target))
+    with pytest.raises(ImagingError,match='absolute'):
+        archive.set_storage('relative-location')
+    with pytest.raises(ImagingError,match='Network'):
+        archive.set_storage('//server/share')
+    assert archive.storage==original
+
+
+@pytest.mark.skipif(os.name!='nt',reason='Windows mapped-drive API')
+def test_mapped_network_storage_rejected_before_io(archive,monkeypatch):
+    import ctypes
+    original=archive.storage
+    monkeypatch.setattr(ctypes.windll.kernel32,'GetDriveTypeW',lambda drive:4)
+    with pytest.raises(ImagingError,match='Network'):
+        archive.set_storage('Z:/remote-studies')
+    assert archive.storage==original

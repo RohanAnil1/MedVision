@@ -5,27 +5,27 @@
   "artifacts": [
     {
       "file": "release/MedVision Setup 0.1.0.exe",
-      "size_bytes": 215851903,
-      "sha256": "fc5676e3ed229c52ec7a4793a1d5a6c717d759d1be4789e25615605fa32b8d35",
-      "built_at": "2026-10-13T11:48:16.523Z"
+      "size_bytes": 215864480,
+      "sha256": "3f84983c4cdf62a5cc1d91e64c95bcae2bd3993549257089716693a8b8e1e8a4",
+      "built_at": "2026-10-13T12:22:49.138Z"
     },
     {
       "file": "release/win-unpacked/MedVision.exe",
       "size_bytes": 246302208,
-      "sha256": "cb50b3f5488899752c05669c0ea537dc4ea803f68a0fc44fd76b1328eed5ff90",
-      "built_at": "2026-10-13T11:47:41.315Z"
+      "sha256": "28a37424d1b1871b4840781ac101b18bd503abaebac1bf9b9fcc427e9afdb79c",
+      "built_at": "2026-10-13T12:22:13.796Z"
     },
     {
       "file": "release/win-unpacked/resources/app.asar",
-      "size_bytes": 87555517,
-      "sha256": "a7c3b6bfdc0ed256f6bf0c291ec8e9898133f11a2e017254914227b2d0843e4a",
-      "built_at": "2026-10-13T11:47:40.928Z"
+      "size_bytes": 87599706,
+      "sha256": "2e2532466c09c793d1e5deef93485fa126a1078d20ecd697402b2f478cbab556",
+      "built_at": "2026-10-13T12:22:13.405Z"
     },
     {
       "file": "release/win-unpacked/resources/backend/medvision-backend/medvision-backend.exe",
-      "size_bytes": 11781516,
-      "sha256": "50b02e33299bd8ce6fe831c7985570e11de4f83c0dde67436f777dbe098dd25c",
-      "built_at": "2026-10-13T11:46:42.334Z"
+      "size_bytes": 11781714,
+      "sha256": "088c8e25fbb1d1b0aab506f93dfc9c8c6514ebba5f42b4a177f7f89cc48aeb84",
+      "built_at": "2026-10-13T12:21:20.020Z"
     }
   ],
   "qualification": "Packaged EXE smoke tested with development runtimes removed from PATH; clean-machine installer and physical GPU matrix remain pending."

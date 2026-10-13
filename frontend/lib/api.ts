@@ -17,5 +17,5 @@ export type Series = components['schemas']['SeriesResponse']
 export type Study = components['schemas']['StudyResponse']
 export type Instance = components['schemas']['InstanceResponse']
 export type Job = components['schemas']['JobResponse']
-declare global { interface Window { medvision?: { session: () => Promise<string>; save: (name: string, bytes: ArrayBuffer) => Promise<boolean> } } }
+declare global { interface Window { medvision?: { session: () => Promise<string>; save: (name: string, bytes: ArrayBuffer) => Promise<boolean>; chooseStorage:()=>Promise<string|null> } } }
 import type { components } from './generated-api'

@@ -7,6 +7,10 @@ import { RotateCcw, RotateCw, FlipHorizontal, FlipVertical, Download, Play, Paus
 import vtkColorTransferFunction from '@kitware/vtk.js/Rendering/Core/ColorTransferFunction'
 import vtkPiecewiseFunction from '@kitware/vtk.js/Common/DataModel/PiecewiseFunction'
 import { restoreAnnotations, watchAnnotations } from '../lib/annotations'
+import { VolumeControls } from './VolumeControls'
+import {defaultVolumeStyle,clippingPlanes,scalarRange,transferNodes} from '../lib/volume-style'
+import vtkPlane from '@kitware/vtk.js/Common/DataModel/Plane'
+import type {vtkVolume} from '@kitware/vtk.js/Rendering/Core/Volume'
 
 interface Props { series: Series; mode: Mode; active: boolean; onActive: () => void; onMetadata: (id: string) => void }
 interface Geometry { dimensions: [number, number, number]; spacing: [number, number, number]; origin: [number, number, number]; direction: core.Types.Mat3; frame_of_reference_uid: string }
@@ -27,6 +31,9 @@ export function Viewport({series, mode, active, onActive, onMetadata}: Props) {
   const volumeId = useRef('')
   const cameraRotation = useRef(0)
   const volumeGeometry=useRef<Geometry>()
+  const volumeActor=useRef<vtkVolume>()
+  const [volumeStyle,setVolumeStyle]=useState(()=>defaultVolumeStyle(series.modality))
+  const [range,setRange]=useState<[number,number]>([-1000,1200])
   const getViewport = () => engine.current?.getViewport(viewportId.current)
 
   useEffect(() => {
@@ -69,9 +76,13 @@ export function Viewport({series, mode, active, onActive, onMetadata}: Props) {
         volumeGeometry.current=geometry
         const bytes = await response.arrayBuffer()
         if (disposed) return
+        const scalarData=new Float32Array(bytes)
+        const limits=scalarRange(scalarData)
+        setRange(limits)
+        if(mode==='volume'&&series.modality!=='CT')setVolumeStyle(style=>({...style,threshold:limits[0]+(limits[1]-limits[0])*0.15}))
         volumeId.current = `medvision-volume:${crypto.randomUUID()}`
         const localVolume = core.volumeLoader.createLocalVolume(volumeId.current, {
-          ...geometry, scalarData: new Float32Array(bytes),
+          ...geometry, scalarData,
           metadata: {
             Modality: series.modality, FrameOfReferenceUID: geometry.frame_of_reference_uid,
             BitsAllocated: 32, BitsStored: 32, HighBit: 31, SamplesPerPixel: 1,
@@ -88,16 +99,7 @@ export function Viewport({series, mode, active, onActive, onMetadata}: Props) {
           })
         }
         await core.setVolumesForViewports(currentEngine, [{volumeId: volumeId.current,
-          callback: ({volumeActor}) => {
-            if (mode !== 'volume') return
-            const rgb = vtkColorTransferFunction.newInstance()
-            rgb.addRGBPoint(-1000, 0, 0, 0); rgb.addRGBPoint(0, 0.55, 0.25, 0.12); rgb.addRGBPoint(300, 0.95, 0.8, 0.6); rgb.addRGBPoint(1200, 1, 1, 1)
-            const opacity = vtkPiecewiseFunction.newInstance()
-            opacity.addPoint(-1000, 0); opacity.addPoint(100, 0); opacity.addPoint(300, 0.15); opacity.addPoint(1200, 0.8)
-            volumeActor.getProperty().setRGBTransferFunction(0, rgb)
-            volumeActor.getProperty().setScalarOpacity(0, opacity)
-            volumeActor.getProperty().setShade(true)
-          },
+          callback: ({volumeActor:actor}) => {volumeActor.current=actor},
         }], [viewportId.current])
         if (disposed) return
         currentEngine.getViewport(viewportId.current).resetCamera()
@@ -128,14 +130,46 @@ export function Viewport({series, mode, active, onActive, onMetadata}: Props) {
         for(const id of imageIds)if(core.cache.getImageLoadObject(id))core.cache.removeImageLoadObject(id)
       }
       volumeId.current = ''
+      volumeActor.current=undefined
     }
   }, [series.series_uid, mode, cpu])
+
+  useEffect(()=>{setVolumeStyle(defaultVolumeStyle(series.modality))},[series.series_uid])
+  useEffect(()=>{
+    if(loading||mode!=='volume'||!volumeActor.current||!volumeGeometry.current)return
+    const actor=volumeActor.current,geometry=volumeGeometry.current
+    const nodes=transferNodes(range,volumeStyle)
+    const rgb=vtkColorTransferFunction.newInstance(),opacity=vtkPiecewiseFunction.newInstance()
+    for(const [value,r,g,b] of nodes.rgb)rgb.addRGBPoint(value,r,g,b)
+    for(const [value,alpha] of nodes.opacity)opacity.addPoint(value,alpha)
+    const property=actor.getProperty()
+    const previousRGB=property.getRGBTransferFunction(0),previousOpacity=property.getScalarOpacity(0)
+    property.setRGBTransferFunction(0,rgb);property.setScalarOpacity(0,opacity);property.setShade(volumeStyle.shade)
+    previousRGB?.delete();previousOpacity?.delete()
+    const mapper=actor.getMapper()
+    if(!mapper)return
+    // vtk.js 36.4.1 declares six uniform slots despite accepting more planes.
+    // Use its supported post-generation shader replacement API for six crop faces + one clip plane.
+    const shaderMapper=mapper as typeof mapper & {setViewSpecificProperties:(properties:Record<string,unknown>)=>void}
+    shaderMapper.setViewSpecificProperties({OpenGL:{ShaderReplacements:[['vec3','vClipPlaneNormals'],['float','vClipPlaneDistances'],['vec3','vClipPlaneOrigins']].map(([type,name])=>({
+      shaderType:'Fragment',replaceFirst:false,replaceAll:true,
+      originalValue:`uniform ${type} ${name}\\[6\\];`,replacementValue:`uniform ${type} ${name}[7];`,
+    }))}})
+    const oldPlanes=[...mapper.getClippingPlanes()]
+    mapper.removeAllClippingPlanes()
+    for(const spec of clippingPlanes(geometry,volumeStyle)){
+      const plane=vtkPlane.newInstance();plane.setOrigin(...spec.origin);plane.setNormal(...spec.normal);mapper.addClippingPlane(plane)
+    }
+    for(const plane of oldPlanes)plane.delete()
+    ;(getViewport() as core.BaseVolumeViewport).setSampleDistanceMultiplier(volumeStyle.quality)
+    getViewport()?.render()
+  },[volumeStyle,range,mode,loading,version])
 
   useEffect(() => {
     const group = tools.ToolGroupManager.getToolGroup(groupId.current)
     if (!group || loading) return
     for (const ToolClass of toolClasses) if (ToolClass.toolName !== 'StackScroll') group.setToolPassive(ToolClass.toolName)
-    const chosen = mode === 'volume' ? 'TrackballRotate' : tool
+    const chosen = mode === 'volume' && tool!=='Pan' && tool!=='Zoom' ? 'TrackballRotate' : tool
     group.setToolActive(chosen, {bindings: [{mouseButton: tools.Enums.MouseBindings.Primary}]})
     group.setToolActive('Pan', {bindings: [{mouseButton: tools.Enums.MouseBindings.Auxiliary}]})
     group.setToolActive('Zoom', {bindings: [{mouseButton: tools.Enums.MouseBindings.Secondary}]})
@@ -197,6 +231,7 @@ export function Viewport({series, mode, active, onActive, onMetadata}: Props) {
     <div className="render-surface" ref={element} onContextMenu={e => e.preventDefault()}/>
     {loading && <div className="viewport-message">Loading local image data…</div>}
     {error && <div className="viewport-message error" role="alert">{error}</div>}
+    {mode==='volume'&&!loading&&!error&&<VolumeControls style={volumeStyle} range={range} onChange={setVolumeStyle} onReset={()=>setVolumeStyle(defaultVolumeStyle(series.modality))}/>}
     <div className="viewport-controls">
       <span className="text-xs text-slate-400">{count ? `${index + 1} / ${count}` : '—'}</span>
       {mode !== 'volume' && <input aria-label="Slice" type="range" min={0} max={Math.max(0, count - 1)} value={index} disabled={mode!=='stack'&&projection!=='slice'} onChange={e => void navigate(Number(e.target.value))}/>}

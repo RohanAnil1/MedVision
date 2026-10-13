@@ -22,11 +22,41 @@ try {
   const remote=[]
   app.context().on('request',request=>{const url=new URL(request.url());if(['http:','https:'].includes(url.protocol)&&url.hostname!=='127.0.0.1')remote.push(url.origin)})
   await expect(window.getByText('Synthetic Phantom',{exact:true})).toBeVisible({timeout:30000})
+  const selectedStorage=path.join(temporary,'native-selected-storage')
+  await app.evaluate(({dialog},location)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[location]})},selectedStorage)
+  await window.getByRole('button',{name:'Workstation settings',exact:true}).click()
+  await window.getByRole('button',{name:'Choose folder',exact:true}).click()
+  await expect(window.getByRole('textbox',{name:'Study storage folder'})).toHaveValue(selectedStorage)
+  await window.getByRole('button',{name:'Save storage location',exact:true}).click()
+  await expect(window.getByRole('status')).toContainText('Storage location saved')
+  await window.getByRole('button',{name:'Close settings',exact:true}).click()
   await window.getByRole('button',{name:'CT Synthetic CT phantom 5 frames'}).click()
   await expect(window.getByText('Loading local image data…')).toBeHidden({timeout:30000})
   await expect(window.locator('.viewport-message.error')).toHaveCount(0)
+  const imageCenter=()=>window.locator('.render-surface canvas').evaluate(canvas=>{
+    const copy=document.createElement('canvas');copy.width=canvas.width;copy.height=canvas.height
+    const ctx=copy.getContext('2d');ctx.drawImage(canvas,0,0)
+    const values=ctx.getImageData(0,0,copy.width,copy.height).data;let count=0,sum=0
+    for(let i=0;i<values.length;i+=4)if(values[i]>10||values[i+1]>10||values[i+2]>10){count++;sum+=(i/4)%copy.width}
+    return {pixels:count,x:count?sum/count:0}
+  })
   await window.getByRole('button',{name:'3D volume',exact:true}).click()
   await expect(window.getByText('Loading local image data…')).toBeHidden({timeout:30000})
+  await expect(window.locator('.viewport-message.error')).toHaveCount(0)
+  await expect.poll(async()=>(await imageCenter()).pixels).toBeGreaterThan(1000)
+  const wholeCenter=(await imageCenter()).x
+  await window.getByRole('slider',{name:'Volume opacity'}).fill('0.4')
+  await window.getByRole('spinbutton',{name:'Crop X minimum'}).fill('35')
+  await window.getByRole('checkbox',{name:'Enable volume clipping'}).check()
+  await window.getByRole('spinbutton',{name:'Clip pitch'}).fill('20')
+  await window.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))))
+  const retainedDirection=Math.sign((await imageCenter()).x-wholeCenter)
+  for(const axis of ['X','Y','Z']){
+    await window.getByRole('spinbutton',{name:`Crop ${axis} minimum`}).fill('10')
+    await window.getByRole('spinbutton',{name:`Crop ${axis} maximum`}).fill('90')
+  }
+  await window.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))))
+  await expect.poll(async()=>((await imageCenter()).x-wholeCenter)*retainedDirection).toBeGreaterThan(30)
   await expect(window.locator('.viewport-message.error')).toHaveCount(0)
   const isolated=await window.evaluate(()=>typeof window.require==='undefined'&&typeof window.process==='undefined')
   expect(isolated).toBe(true)

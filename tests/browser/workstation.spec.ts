@@ -12,6 +12,17 @@ async function visibleImagePixels(page: import('@playwright/test').Page) {
   })
 }
 
+async function imageCentroidX(page:import('@playwright/test').Page){
+  return page.locator('.render-surface canvas').evaluate(canvas=>{
+    const original=canvas as HTMLCanvasElement,copy=document.createElement('canvas');copy.width=original.width;copy.height=original.height
+    const ctx=copy.getContext('2d')!;ctx.drawImage(original,0,0)
+    const pixels=ctx.getImageData(0,0,copy.width,copy.height).data
+    let sum=0,count=0
+    for(let i=0;i<pixels.length;i+=4)if(pixels[i]>10||pixels[i+1]>10||pixels[i+2]>10){sum+=(i/4)%copy.width;count++}
+    return count?sum/count:0
+  })
+}
+
 test('real DICOM stack, MPR, volume and restart stay on loopback', async ({page, context}) => {
   const remote: string[] = []
   const failures: string[] = []
@@ -25,6 +36,14 @@ test('real DICOM stack, MPR, volume and restart stay on loopback', async ({page,
   await page.evaluate(async () => {await fetch('/bootstrap', {method:'POST',body:new URLSearchParams({code:'browser-test-bootstrap'}),redirect:'manual'})})
   await page.reload()
   await expect(page.getByText('Synthetic Phantom', {exact:true})).toBeVisible()
+  await page.getByRole('button',{name:'Workstation settings',exact:true}).click()
+  const storageInput=page.getByRole('textbox',{name:'Study storage folder'})
+  await expect(storageInput).not.toHaveValue('')
+  const storage=await storageInput.inputValue()
+  await storageInput.fill(storage+'-alternate')
+  await page.getByRole('button',{name:'Save storage location',exact:true}).click()
+  await expect(page.getByRole('status')).toContainText('Storage location saved')
+  await page.getByRole('button',{name:'Close settings',exact:true}).click()
   await page.getByRole('button',{name:'CT Synthetic CT phantom 5 frames'}).click()
   await expect(page.locator('.viewport-controls')).toBeVisible()
   await expect(page.getByText('Loading local image data…')).toBeHidden({timeout:30000})
@@ -68,6 +87,37 @@ test('real DICOM stack, MPR, volume and restart stay on loopback', async ({page,
   await expect(page.locator('.viewport-message.error')).toHaveCount(0)
   await expect.poll(() => visibleImagePixels(page)).toBeGreaterThan(1000)
   await page.screenshot({path:'test-results/workstation-volume.png'})
+  await page.getByRole('slider',{name:'Volume opacity'}).fill('0')
+  await expect.poll(()=>visibleImagePixels(page)).toBe(0)
+  await page.getByRole('slider',{name:'Volume opacity'}).fill('0.8')
+  await expect.poll(()=>visibleImagePixels(page)).toBeGreaterThan(1000)
+  const fullVolumePixels=await visibleImagePixels(page)
+  const fullVolumeCenter=await imageCentroidX(page)
+  await page.getByRole('spinbutton',{name:'Crop X minimum'}).fill('50')
+  await expect.poll(()=>visibleImagePixels(page)).toBeLessThan(fullVolumePixels*0.8)
+  await expect.poll(()=>visibleImagePixels(page)).toBeGreaterThan(1000)
+  await page.getByRole('button',{name:'Reset volume display',exact:true}).click()
+  await expect.poll(()=>visibleImagePixels(page)).toBeGreaterThan(fullVolumePixels*0.9)
+  await page.getByRole('checkbox',{name:'Enable volume clipping'}).check()
+  await expect.poll(()=>visibleImagePixels(page)).toBeLessThan(fullVolumePixels*0.8)
+  const firstSide=await imageCentroidX(page)
+  await page.getByRole('checkbox',{name:'Reverse clipping'}).check()
+  await expect.poll(async()=>Math.abs((await imageCentroidX(page))-firstSide)).toBeGreaterThan(80)
+  const reversedSide=await imageCentroidX(page)
+  await page.getByRole('spinbutton',{name:'Clip yaw'}).fill('45')
+  await page.getByRole('spinbutton',{name:'Clip pitch'}).fill('20')
+  await expect.poll(()=>visibleImagePixels(page)).toBeGreaterThan(1000)
+  await page.getByRole('combobox',{name:'Volume color preset'}).selectOption('grayscale')
+  await page.getByRole('combobox',{name:'Volume sampling'}).selectOption('2')
+  for(const axis of ['X','Y','Z']){
+    await page.getByRole('spinbutton',{name:`Crop ${axis} minimum`}).fill('10')
+    await page.getByRole('spinbutton',{name:`Crop ${axis} maximum`}).fill('90')
+  }
+  await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))))
+  await expect.poll(()=>visibleImagePixels(page)).toBeGreaterThan(1000)
+  await expect.poll(async()=>((await imageCentroidX(page))-fullVolumeCenter)*Math.sign(reversedSide-fullVolumeCenter)).toBeGreaterThan(30)
+  await page.screenshot({path:'test-results/workstation-clipping.png'})
+  await page.getByRole('button',{name:'Reset volume display',exact:true}).click()
   await page.getByRole('button',{name:'2D stack',exact:true}).click()
   await expect(page.getByText('Loading local image data…')).toBeHidden({timeout:30000})
   await page.getByLabel('CPU 2D').check()
