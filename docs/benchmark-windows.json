@@ -1,0 +1,14 @@
+{
+  "date": "2026-10-13",
+  "os": "Windows-10-10.0.26200-SP0",
+  "architecture": "AMD64",
+  "python": "3.10.11",
+  "dataset": "synthetic CT sphere; 128 x 256 x 256, signed 16-bit DICOM, float32 reconstruction",
+  "original_bytes": 16898220,
+  "volume_bytes": 33554432,
+  "import_seconds": 0.945584,
+  "reconstruct_seconds": 0.251022,
+  "mean_coronal_slice_seconds": 1e-05,
+  "full_axial_mip_seconds": 0.002894,
+  "limitations": "CPU backend baseline only; no physical GPU timing, large-study stress, or macOS qualification"
+}

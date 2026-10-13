@@ -17,6 +17,8 @@ from .archive import Archive, ImagingError
 from .config import Config
 from .imaging import build_volume, oblique, pixels, png, reconstruct, window
 from .jobs import Jobs
+from .measurements import calculate, measurement_csv, measurement_pdf
+from .models import InstanceResponse, StudyResponse, JobResponse, SettingsResponse
 
 
 class StorageRequest(BaseModel):
@@ -32,6 +34,7 @@ class Annotation(BaseModel):
     points: list[tuple[float, float, float]] = Field(min_length=1, max_length=1024)
     units: Literal["mm", "pixels"]
     text: str = Field(default="", max_length=4096)
+    state: dict | None = None
 
 
 class ObliqueRequest(BaseModel):
@@ -51,6 +54,9 @@ def safe_relative(name):
     path = PurePosixPath(name)
     if path.is_absolute() or any(p in (".", "..") for p in name.split("/")):
         raise ImagingError("Unsafe upload path.")
+    reserved = {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}
+    if any(p.endswith((".", " ")) or p.split(".")[0].upper() in reserved or any(c in p for c in '<>"|?*') for p in path.parts):
+        raise ImagingError("Upload path is not a portable file name.")
     return Path(*path.parts)
 
 
@@ -96,15 +102,15 @@ def create_app(config=None):
     def health():
         return {"service": "medvision", "version": "0.1.0", "networking_enabled": False}
 
-    @app.get("/api/v1/studies")
+    @app.get("/api/v1/studies", response_model=list[StudyResponse])
     def studies(q: str = ""):
         return archive.studies(q)
 
-    @app.get("/api/v1/series/{series_uid}/instances")
+    @app.get("/api/v1/series/{series_uid}/instances", response_model=list[InstanceResponse])
     def instances(series_uid: str):
         return archive.instances(series_uid)
 
-    @app.post("/api/v1/imports", status_code=202)
+    @app.post("/api/v1/imports", status_code=202, response_model=JobResponse)
     async def import_files(files: list[UploadFile] = File(...)):
         if len(files) > 10000:
             raise HTTPException(413, "Too many files in one import.")
@@ -164,11 +170,11 @@ def create_app(config=None):
             for upload in files:
                 await upload.close()
 
-    @app.get("/api/v1/jobs/{job_id}")
+    @app.get("/api/v1/jobs/{job_id}", response_model=JobResponse)
     def job(job_id: str):
         return jobs.get(job_id)
 
-    @app.post("/api/v1/jobs/{job_id}/cancel")
+    @app.post("/api/v1/jobs/{job_id}/cancel", response_model=JobResponse)
     def cancel(job_id: str):
         return jobs.cancel(job_id)
 
@@ -193,7 +199,7 @@ def create_app(config=None):
         image = window(array, center, width, invert ^ (str(ds.PhotometricInterpretation) == "MONOCHROME1"))
         return Response(png(image), media_type="image/png")
 
-    @app.get("/api/v1/settings")
+    @app.get("/api/v1/settings", response_model=SettingsResponse)
     def settings():
         return {"storage_path": str(archive.storage), "networking_enabled": False, "max_volume_bytes": config.max_volume_bytes}
 
@@ -215,15 +221,34 @@ def create_app(config=None):
             raise ImagingError("Annotation source mismatch.")
         if not np.all(np.isfinite(body.points)):
             raise ImagingError("Annotation coordinates must be finite.")
+        if body.state is not None:
+            try:
+                state_size = len(json.dumps(body.state, allow_nan=False))
+            except ValueError as exc:
+                raise ImagingError("Annotation state must contain finite values.") from exc
+            if state_size > 256 * 1024:
+                raise ImagingError("Annotation state exceeds the storage budget.")
+        ds, image, _ = pixels(Path(instance["path"]), body.frame)
+        result = calculate(body.tool, body.points, body.units, ds, image, body.frame)
+        record = {**body.model_dump(), "result": result}
         with archive.connect() as db:
-            db.execute("INSERT OR REPLACE INTO annotations(id,series_uid,body) VALUES(?,?,?)", (body.id, body.series_uid, body.model_dump_json()))
-        return body
+            db.execute("INSERT OR REPLACE INTO annotations(id,series_uid,body) VALUES(?,?,?)", (body.id, body.series_uid, json.dumps(record)))
+        return record
 
     @app.delete("/api/v1/annotations/{annotation_id}")
     def delete_annotation(annotation_id: str):
         with archive.connect() as db:
             db.execute("DELETE FROM annotations WHERE id=?", (annotation_id,))
         return {"deleted": True}
+
+    @app.get("/api/v1/series/{series_uid}/exports/measurements")
+    def export_measurements(series_uid: str, format: Literal["json", "csv", "pdf"] = "json"):
+        items = annotations(series_uid)
+        if format == "csv":
+            return Response(measurement_csv(items), media_type="text/csv", headers={"Content-Disposition": 'attachment; filename="MedVision-measurements.csv"'})
+        if format == "pdf":
+            return Response(measurement_pdf(series_uid, items), media_type="application/pdf", headers={"Content-Disposition": 'attachment; filename="MedVision-report.pdf"'})
+        return JSONResponse(items)
 
     @app.get("/api/v1/series/{series_uid}/reconstruction")
     def reconstruction(series_uid: str, plane: str = "axial", index: int = 0, projection: str = "slice", center: float = 40, width: float = 400):

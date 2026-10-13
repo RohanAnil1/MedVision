@@ -9,3 +9,12 @@ __pycache__/
 *.egg-info/
 .local-data/
 test-results/
+*.log
+.env
+.env.*
+*.dcm
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+studies/
+data/

@@ -42,7 +42,13 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StudyResponse"
+                  },
+                  "title": "Response Studies Api V1 Studies Get"
+                }
               }
             }
           },
@@ -79,7 +85,13 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InstanceResponse"
+                  },
+                  "title": "Response Instances Api V1 Series  Series Uid  Instances Get"
+                }
               }
             }
           },
@@ -115,7 +127,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponse"
+                }
               }
             }
           },
@@ -152,7 +166,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponse"
+                }
               }
             }
           },
@@ -189,7 +205,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponse"
+                }
               }
             }
           },
@@ -425,7 +443,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsResponse"
+                }
               }
             }
           }
@@ -562,6 +582,58 @@
             "schema": {
               "type": "string",
               "title": "Annotation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/series/{series_uid}/exports/measurements": {
+      "get": {
+        "summary": "Export Measurements",
+        "operationId": "export_measurements_api_v1_series__series_uid__exports_measurements_get",
+        "parameters": [
+          {
+            "name": "series_uid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Series Uid"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv",
+                "pdf"
+              ],
+              "type": "string",
+              "default": "json",
+              "title": "Format"
             }
           }
         ],
@@ -832,6 +904,18 @@
             "maxLength": 4096,
             "title": "Text",
             "default": ""
+          },
+          "state": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
           }
         },
         "type": "object",
@@ -875,6 +959,292 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "ImportErrorResponse": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "title": "File"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file",
+          "message"
+        ],
+        "title": "ImportErrorResponse"
+      },
+      "ImportResult": {
+        "properties": {
+          "imported": {
+            "type": "integer",
+            "title": "Imported"
+          },
+          "duplicates": {
+            "type": "integer",
+            "title": "Duplicates"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/ImportErrorResponse"
+            },
+            "type": "array",
+            "title": "Errors"
+          }
+        },
+        "type": "object",
+        "required": [
+          "imported",
+          "duplicates",
+          "errors"
+        ],
+        "title": "ImportResult"
+      },
+      "InstanceResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "study_uid": {
+            "type": "string",
+            "title": "Study Uid"
+          },
+          "series_uid": {
+            "type": "string",
+            "title": "Series Uid"
+          },
+          "sop_uid": {
+            "type": "string",
+            "title": "Sop Uid"
+          },
+          "sop_class_uid": {
+            "type": "string",
+            "title": "Sop Class Uid"
+          },
+          "patient_name": {
+            "type": "string",
+            "title": "Patient Name"
+          },
+          "patient_id": {
+            "type": "string",
+            "title": "Patient Id"
+          },
+          "study_date": {
+            "type": "string",
+            "title": "Study Date"
+          },
+          "study_description": {
+            "type": "string",
+            "title": "Study Description"
+          },
+          "series_description": {
+            "type": "string",
+            "title": "Series Description"
+          },
+          "modality": {
+            "type": "string",
+            "title": "Modality"
+          },
+          "instance_number": {
+            "type": "integer",
+            "title": "Instance Number"
+          },
+          "rows": {
+            "type": "integer",
+            "title": "Rows"
+          },
+          "columns": {
+            "type": "integer",
+            "title": "Columns"
+          },
+          "frames": {
+            "type": "integer",
+            "title": "Frames"
+          },
+          "samples": {
+            "type": "integer",
+            "title": "Samples"
+          },
+          "photometric": {
+            "type": "string",
+            "title": "Photometric"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "orientation": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Orientation"
+          },
+          "spacing": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spacing"
+          },
+          "window_center": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Center"
+          },
+          "window_width": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Width"
+          },
+          "transfer_syntax": {
+            "type": "string",
+            "title": "Transfer Syntax"
+          },
+          "frame_of_reference_uid": {
+            "type": "string",
+            "title": "Frame Of Reference Uid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "study_uid",
+          "series_uid",
+          "sop_uid",
+          "sop_class_uid",
+          "patient_name",
+          "patient_id",
+          "study_date",
+          "study_description",
+          "series_description",
+          "modality",
+          "instance_number",
+          "rows",
+          "columns",
+          "frames",
+          "samples",
+          "photometric",
+          "position",
+          "orientation",
+          "spacing",
+          "window_center",
+          "window_width",
+          "transfer_syntax",
+          "frame_of_reference_uid"
+        ],
+        "title": "InstanceResponse"
+      },
+      "JobResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status"
+          },
+          "progress": {
+            "type": "number",
+            "title": "Progress"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImportResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "progress",
+          "result",
+          "error"
+        ],
+        "title": "JobResponse"
       },
       "ObliqueRequest": {
         "properties": {
@@ -981,6 +1351,67 @@
         ],
         "title": "ObliqueRequest"
       },
+      "SeriesResponse": {
+        "properties": {
+          "series_uid": {
+            "type": "string",
+            "title": "Series Uid"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "modality": {
+            "type": "string",
+            "title": "Modality"
+          },
+          "instance_count": {
+            "type": "integer",
+            "title": "Instance Count"
+          },
+          "frame_count": {
+            "type": "integer",
+            "title": "Frame Count"
+          },
+          "first_instance_id": {
+            "type": "string",
+            "title": "First Instance Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "series_uid",
+          "description",
+          "modality",
+          "instance_count",
+          "frame_count",
+          "first_instance_id"
+        ],
+        "title": "SeriesResponse"
+      },
+      "SettingsResponse": {
+        "properties": {
+          "storage_path": {
+            "type": "string",
+            "title": "Storage Path"
+          },
+          "networking_enabled": {
+            "type": "boolean",
+            "title": "Networking Enabled"
+          },
+          "max_volume_bytes": {
+            "type": "integer",
+            "title": "Max Volume Bytes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "storage_path",
+          "networking_enabled",
+          "max_volume_bytes"
+        ],
+        "title": "SettingsResponse"
+      },
       "StorageRequest": {
         "properties": {
           "path": {
@@ -995,6 +1426,52 @@
           "path"
         ],
         "title": "StorageRequest"
+      },
+      "StudyResponse": {
+        "properties": {
+          "study_uid": {
+            "type": "string",
+            "title": "Study Uid"
+          },
+          "patient_name": {
+            "type": "string",
+            "title": "Patient Name"
+          },
+          "patient_id": {
+            "type": "string",
+            "title": "Patient Id"
+          },
+          "study_date": {
+            "type": "string",
+            "title": "Study Date"
+          },
+          "study_description": {
+            "type": "string",
+            "title": "Study Description"
+          },
+          "instance_count": {
+            "type": "integer",
+            "title": "Instance Count"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/SeriesResponse"
+            },
+            "type": "array",
+            "title": "Series"
+          }
+        },
+        "type": "object",
+        "required": [
+          "study_uid",
+          "patient_name",
+          "patient_id",
+          "study_date",
+          "study_description",
+          "instance_count",
+          "series"
+        ],
+        "title": "StudyResponse"
       },
       "ValidationError": {
         "properties": {

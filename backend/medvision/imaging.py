@@ -150,7 +150,8 @@ def build_volume(archive, series_uid):
     for z, idx in enumerate(order):
         volume[z] = pixels(Path(references[idx][0]), references[idx][1])[1]
     return volume, {"origin": positions[0].tolist(), "direction": [*x_axis.tolist(), *y_axis.tolist(), *normal.tolist()],
-                    "spacing": [float(spacing[1]), float(spacing[0]), dz], "dimensions": [shape[1], shape[0], len(order)]}
+                    "spacing": [float(spacing[1]), float(spacing[0]), dz], "dimensions": [shape[1], shape[0], len(order)],
+                    "frame_of_reference_uid": next(iter(frame_of_reference))}
 
 
 def reconstruct(volume, plane, index, projection="slice"):

@@ -243,6 +243,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/series/{series_uid}/exports/measurements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Measurements */
+        get: operations["export_measurements_api_v1_series__series_uid__exports_measurements_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/series/{series_uid}/reconstruction": {
         parameters: {
             query?: never;
@@ -329,6 +346,10 @@ export interface components {
              * @default
              */
             text: string;
+            /** State */
+            state?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** Body_import_files_api_v1_imports_post */
         Body_import_files_api_v1_imports_post: {
@@ -339,6 +360,90 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** ImportErrorResponse */
+        ImportErrorResponse: {
+            /** File */
+            file: string;
+            /** Message */
+            message: string;
+        };
+        /** ImportResult */
+        ImportResult: {
+            /** Imported */
+            imported: number;
+            /** Duplicates */
+            duplicates: number;
+            /** Errors */
+            errors: components["schemas"]["ImportErrorResponse"][];
+        };
+        /** InstanceResponse */
+        InstanceResponse: {
+            /** Id */
+            id: string;
+            /** Study Uid */
+            study_uid: string;
+            /** Series Uid */
+            series_uid: string;
+            /** Sop Uid */
+            sop_uid: string;
+            /** Sop Class Uid */
+            sop_class_uid: string;
+            /** Patient Name */
+            patient_name: string;
+            /** Patient Id */
+            patient_id: string;
+            /** Study Date */
+            study_date: string;
+            /** Study Description */
+            study_description: string;
+            /** Series Description */
+            series_description: string;
+            /** Modality */
+            modality: string;
+            /** Instance Number */
+            instance_number: number;
+            /** Rows */
+            rows: number;
+            /** Columns */
+            columns: number;
+            /** Frames */
+            frames: number;
+            /** Samples */
+            samples: number;
+            /** Photometric */
+            photometric: string;
+            /** Position */
+            position: number[] | null;
+            /** Orientation */
+            orientation: number[] | null;
+            /** Spacing */
+            spacing: number[] | null;
+            /** Window Center */
+            window_center: string | string[] | null;
+            /** Window Width */
+            window_width: string | string[] | null;
+            /** Transfer Syntax */
+            transfer_syntax: string;
+            /** Frame Of Reference Uid */
+            frame_of_reference_uid: string;
+        };
+        /** JobResponse */
+        JobResponse: {
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "completed" | "failed" | "cancelled";
+            /** Progress */
+            progress: number;
+            result: components["schemas"]["ImportResult"] | null;
+            /** Error */
+            error: string | null;
         };
         /** ObliqueRequest */
         ObliqueRequest: {
@@ -392,10 +497,51 @@ export interface components {
              */
             width: number;
         };
+        /** SeriesResponse */
+        SeriesResponse: {
+            /** Series Uid */
+            series_uid: string;
+            /** Description */
+            description: string;
+            /** Modality */
+            modality: string;
+            /** Instance Count */
+            instance_count: number;
+            /** Frame Count */
+            frame_count: number;
+            /** First Instance Id */
+            first_instance_id: string;
+        };
+        /** SettingsResponse */
+        SettingsResponse: {
+            /** Storage Path */
+            storage_path: string;
+            /** Networking Enabled */
+            networking_enabled: boolean;
+            /** Max Volume Bytes */
+            max_volume_bytes: number;
+        };
         /** StorageRequest */
         StorageRequest: {
             /** Path */
             path: string;
+        };
+        /** StudyResponse */
+        StudyResponse: {
+            /** Study Uid */
+            study_uid: string;
+            /** Patient Name */
+            patient_name: string;
+            /** Patient Id */
+            patient_id: string;
+            /** Study Date */
+            study_date: string;
+            /** Study Description */
+            study_description: string;
+            /** Instance Count */
+            instance_count: number;
+            /** Series */
+            series: components["schemas"]["SeriesResponse"][];
         };
         /** ValidationError */
         ValidationError: {
@@ -452,7 +598,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["StudyResponse"][];
                 };
             };
             /** @description Validation Error */
@@ -483,7 +629,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["InstanceResponse"][];
                 };
             };
             /** @description Validation Error */
@@ -516,7 +662,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["JobResponse"];
                 };
             };
             /** @description Validation Error */
@@ -547,7 +693,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["JobResponse"];
                 };
             };
             /** @description Validation Error */
@@ -578,7 +724,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["JobResponse"];
                 };
             };
             /** @description Validation Error */
@@ -738,7 +884,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["SettingsResponse"];
                 };
             };
         };
@@ -848,6 +994,39 @@ export interface operations {
             header?: never;
             path: {
                 annotation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_measurements_api_v1_series__series_uid__exports_measurements_get: {
+        parameters: {
+            query?: {
+                format?: "json" | "csv" | "pdf";
+            };
+            header?: never;
+            path: {
+                series_uid: string;
             };
             cookie?: never;
         };

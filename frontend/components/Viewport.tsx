@@ -6,9 +6,10 @@ import { Button } from './ui/button'
 import { RotateCcw, RotateCw, FlipHorizontal, FlipVertical, Download, Play, Pause } from 'lucide-react'
 import vtkColorTransferFunction from '@kitware/vtk.js/Rendering/Core/ColorTransferFunction'
 import vtkPiecewiseFunction from '@kitware/vtk.js/Common/DataModel/PiecewiseFunction'
+import { restoreAnnotations, watchAnnotations } from '../lib/annotations'
 
 interface Props { series: Series; mode: Mode; active: boolean; onActive: () => void; onMetadata: (id: string) => void }
-interface Geometry { dimensions: [number, number, number]; spacing: [number, number, number]; origin: [number, number, number]; direction: core.Types.Mat3 }
+interface Geometry { dimensions: [number, number, number]; spacing: [number, number, number]; origin: [number, number, number]; direction: core.Types.Mat3; frame_of_reference_uid: string }
 
 export function Viewport({series, mode, active, onActive, onMetadata}: Props) {
   const element = useRef<HTMLDivElement>(null)
@@ -31,6 +32,7 @@ export function Viewport({series, mode, active, onActive, onMetadata}: Props) {
     let disposed = false
     const controller = new AbortController()
     let resize: ResizeObserver | undefined
+    let stopAnnotations: (() => void) | undefined
     setLoading(true); setError(''); setPlaying(false); setIndex(0)
     async function start() {
       await initializeImaging()
@@ -55,6 +57,9 @@ export function Viewport({series, mode, active, onActive, onMetadata}: Props) {
         await viewport.setStack(frames.current.map(item => imageId(item.instance.id, item.frame)))
         if (disposed) return
         onMetadata(frames.current[0].instance.id)
+        await restoreAnnotations(series.series_uid, element.current!)
+        if (disposed) return
+        stopAnnotations = watchAnnotations(series.series_uid, frames.current, setError)
         group.setToolActive('StackScroll', {bindings: [{mouseButton: tools.Enums.MouseBindings.Wheel}]})
         element.current.addEventListener(core.Enums.Events.STACK_NEW_IMAGE, stackChanged)
       } else {
@@ -66,7 +71,7 @@ export function Viewport({series, mode, active, onActive, onMetadata}: Props) {
         const localVolume = core.volumeLoader.createLocalVolume(volumeId.current, {
           ...geometry, scalarData: new Float32Array(bytes),
           metadata: {
-            Modality: series.modality, FrameOfReferenceUID: series.series_uid,
+            Modality: series.modality, FrameOfReferenceUID: geometry.frame_of_reference_uid,
             BitsAllocated: 32, BitsStored: 32, HighBit: 31, SamplesPerPixel: 1,
             PhotometricInterpretation: 'MONOCHROME2', PixelRepresentation: 1,
             ImageOrientationPatient: Array.from(geometry.direction).slice(0, 6), PixelSpacing: [geometry.spacing[1], geometry.spacing[0]],
@@ -110,7 +115,7 @@ export function Viewport({series, mode, active, onActive, onMetadata}: Props) {
     }
     start().catch(error => { if (!disposed) { setError(error instanceof Error ? error.message : 'DICOM rendering failed.'); setLoading(false) } })
     return () => {
-      disposed = true; controller.abort(); resize?.disconnect()
+      disposed = true; controller.abort(); resize?.disconnect(); stopAnnotations?.()
       element.current?.removeEventListener(core.Enums.Events.STACK_NEW_IMAGE, stackChanged)
       tools.ToolGroupManager.destroyToolGroup(groupId.current)
       engine.current?.destroy(); engine.current = undefined

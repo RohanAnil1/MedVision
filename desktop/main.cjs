@@ -3,6 +3,11 @@ const { spawn } = require('node:child_process')
 const { randomBytes } = require('node:crypto')
 const path = require('node:path')
 const fs = require('node:fs/promises')
+const { pathToFileURL } = require('node:url')
+app.commandLine.appendSwitch('disable-background-networking')
+app.commandLine.appendSwitch('disable-component-update')
+app.commandLine.appendSwitch('disable-domain-reliability')
+app.commandLine.appendSwitch('disable-sync')
 let backend, frontend, mainWindow
 const token = randomBytes(32).toString('hex')
 if (!app.requestSingleInstanceLock()) app.quit()
@@ -11,7 +16,7 @@ else {
   app.whenReady().then(async () => {
     try {
       const root = path.resolve(__dirname, '..')
-      const { serveFrontend } = await import(path.join(root, 'scripts/server.mjs'))
+      const { serveFrontend } = await import(pathToFileURL(path.join(root, 'scripts/server.mjs')).href)
       frontend = await serveFrontend(path.join(root, 'dist'), token)
       const command = app.isPackaged
         ? path.join(process.resourcesPath, 'backend', 'medvision-backend', process.platform === 'win32' ? 'medvision-backend.exe' : 'medvision-backend')
@@ -29,7 +34,7 @@ else {
         await new Promise(r => setTimeout(r, 100))
       }
       if (!ready) throw new Error('Backend startup failed or port 8000 is occupied.')
-      mainWindow = new BrowserWindow({ width: 1500, height: 960, minWidth: 1000, minHeight: 650, backgroundColor: '#090e16', title: 'MedVision', webPreferences: { preload: path.join(__dirname, 'preload.cjs'), sandbox: true, contextIsolation: true, nodeIntegration: false } })
+      mainWindow = new BrowserWindow({ show: process.env.MEDVISION_HEADLESS_TEST !== '1', width: 1500, height: 960, minWidth: 1000, minHeight: 650, backgroundColor: '#090e16', title: 'MedVision', webPreferences: { preload: path.join(__dirname, 'preload.cjs'), sandbox: true, contextIsolation: true, nodeIntegration: false } })
       const validSender = event => event.sender === mainWindow.webContents && event.senderFrame?.url === 'http://127.0.0.1:3000/'
       ipcMain.handle('medvision:session', event => { if (!validSender(event)) throw new Error('Invalid sender'); return token })
       ipcMain.handle('medvision:save', async (event, name, bytes) => {

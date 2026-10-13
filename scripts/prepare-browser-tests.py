@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 import numpy as np
 import pydicom
+from pydicom.uid import generate_uid, RLELossless, JPEGLSLossless, JPEG2000Lossless
 
 root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(root / "backend"))
@@ -25,3 +26,11 @@ for index, source in enumerate(fixture["files"]):
     ds.PixelData = image.tobytes()
     ds.save_as(source, enforce_file_format=True)
     archive.import_file(source)
+for syntax, description in [(RLELossless,"RLE phantom"),(JPEGLSLossless,"JPEG-LS phantom"),(JPEG2000Lossless,"JPEG2000 phantom")]:
+    ds=pydicom.dcmread(fixture["files"][2])
+    ds.SeriesInstanceUID=generate_uid()
+    ds.SeriesDescription=description
+    ds.compress(syntax)
+    path=destination / (description + '.dcm')
+    ds.save_as(path,enforce_file_format=True)
+    archive.import_file(path)

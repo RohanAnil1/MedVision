@@ -32,6 +32,8 @@ The localhost launcher opens a temporary local launch page. Click **Open MedVisi
 
 Import a DICOM folder or files; then select a series in the archive. Stack tools use actual DICOM geometry and decoded pixels. Multiple viewports can show different series. MPR/3D require consistent spatial geometry; malformed, irregular and tilted series produce explicit errors. CPU stack mode is available; software 3D rendering is still pending.
 
+The saved-measurements toolbar button opens persisted stack measurements and CSV/JSON/PDF export. Measurements are calculated locally against their source images; missing calibration uses pixel units. Annotation persistence on reconstructed planes remains pending.
+
 The archive defaults to `%LOCALAPPDATA%/MedVision/` on Windows or `~/Library/Application Support/MedVision/` on macOS. `MEDVISION_DATA_DIR` overrides it for development/testing. Archive storage can be changed through the local settings API; existing studies stay where they were imported. Data is not uploaded. PACS remains disabled until its implementation and acceptance tests are complete.
 
 ## Verification
@@ -60,7 +62,7 @@ sh scripts/build-backend.sh
 npm run package:mac
 ```
 
-The backend bundle must match the installer architecture. Do not ship both macOS architecture packages with a backend built for only one architecture. Code signing and notarization require the publisher's credentials and are release gates. Installers and native macOS builds remain unverified until their qualification records are recorded.
+The macOS packaging script checks Python/Node architecture agreement, rebuilds the backend and frontend, and produces only the current host architecture's DMG. Run it on ARM64 and Intel hosts separately. Code signing and notarization require the publisher's credentials and are release gates. Native macOS builds remain unverified until their qualification records are recorded.
 
 ## Privacy and security
 

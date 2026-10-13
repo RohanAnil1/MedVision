@@ -2,6 +2,9 @@ import time
 from fastapi.testclient import TestClient
 
 from medvision.app import create_app
+from medvision.app import safe_relative
+from medvision.archive import ImagingError
+import pytest
 
 
 def test_local_security_and_import(config, phantom):
@@ -60,3 +63,9 @@ def test_alternative_storage_preserves_old_studies(config, phantom, tmp_path):
         assert app.state.archive.instance(old["id"])["path"] == original_path
         new = app.state.archive.import_file(phantom["files"][1])
         assert "new-location" in app.state.archive.instance(new["id"])["path"]
+
+
+@pytest.mark.parametrize("name",["NUL.dcm","dir/COM1","../image","/absolute","dir\\image","image:stream","dir/image."])
+def test_portable_upload_paths(name):
+    with pytest.raises(ImagingError):
+        safe_relative(name)

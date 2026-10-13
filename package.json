@@ -13,11 +13,11 @@
     "preview": "vite preview --host 127.0.0.1 --port 3000 --strictPort",
     "start": "node scripts/launch.mjs",
     "desktop": "electron .",
-    "test": "vitest run",
+    "test": "node scripts/test.mjs",
     "test:browser": "playwright test",
     "api:types": "node scripts/generate-types.mjs",
-    "package:win": "npm run build && electron-builder --win nsis --x64",
-    "package:mac": "npm run build && electron-builder --mac dmg --arm64 --x64"
+    "package:win": "node scripts/package-windows.mjs",
+    "package:mac": "node scripts/package-mac.mjs"
   },
   "dependencies": {
     "@cornerstonejs/core": "5.11.7",
@@ -72,7 +72,8 @@
       }
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "signAndEditExecutable": false
     },
     "nsis": {
       "oneClick": false,

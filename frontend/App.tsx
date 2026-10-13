@@ -4,6 +4,7 @@ import { Button } from './components/ui/button'
 import { Viewport } from './components/Viewport'
 import { json, setSession, type Job, type Series, type Study } from './lib/api'
 import { useViewer, type Mode, type Tool } from './lib/store'
+import { Measurements } from './components/Measurements'
 
 const toolOptions: {name: Tool; label: string; icon: typeof Move}[] = [
   {name:'WindowLevel',label:'Window / level',icon:Sun},{name:'Pan',label:'Pan',icon:Move},{name:'Zoom',label:'Zoom',icon:ZoomIn},
@@ -23,6 +24,7 @@ export function App() {
   const [error, setError] = useState('')
   const [metadata, setMetadata] = useState<Record<string, unknown> | null>(null)
   const [showInfo, setShowInfo] = useState(false)
+  const [showMeasurements,setShowMeasurements]=useState(false)
   const uploadRef = useRef<HTMLInputElement>(null)
   const folderRef = useRef<HTMLInputElement>(null)
   const viewer = useViewer()
@@ -84,13 +86,14 @@ export function App() {
       <label><input type="checkbox" checked={viewer.invert} onChange={e => viewer.setInvert(e.target.checked)}/> Invert</label>
       <div className="flex-1"/><Button size="icon" title="Single viewport" variant={layout===1?'default':'ghost'} onClick={() => {setLayout(1);setActive(0)}}><Square size={18}/></Button><Button size="icon" title="Four viewports" variant={layout===4?'default':'ghost'} onClick={() => setLayout(4)}><Grid2X2 size={18}/></Button>
       <Button size="icon" title="Metadata" variant={showInfo?'default':'ghost'} onClick={() => setShowInfo(!showInfo)}><Info size={18}/></Button>
+      <Button size="icon" title="Saved measurements" variant={showMeasurements?'default':'ghost'} onClick={()=>setShowMeasurements(!showMeasurements)}><Ruler size={18}/></Button>
     </div>
     <main className="workspace"><aside className="archive"><div className="section-heading"><span>STUDY ARCHIVE</span><span>{studies.length}</span></div><div className="search"><Search size={15}/><input placeholder="Search local studies" value={query} onChange={e => setQuery(e.target.value)}/></div>
       <div className="study-list">{filtered.map(study => <div className="study" key={study.study_uid}><div className="study-name">{study.patient_name.replaceAll('^',' ') || 'Unnamed patient'}</div><div className="study-meta">{study.patient_id || 'No patient ID'} · {study.study_date || 'Undated'}</div><p>{study.study_description || 'Imaging study'}</p>{study.series.map(series => <button className={`series ${slots[active]?.series_uid === series.series_uid ? 'selected' : ''}`} key={series.series_uid} onClick={() => openSeries(series)}><div className="modality">{series.modality}</div><div><strong>{series.description || 'Unnamed series'}</strong><span>{series.frame_count} frames</span></div></button>)}</div>)}{!studies.length && <div className="archive-empty">Studies stay on this computer.<br/>Import a folder to begin.</div>}</div>
       <div className="archive-foot"><ShieldCheck size={14}/> No cloud connection</div>
     </aside><div className="viewing-area"><div className="mode-row">{([{id:'stack',label:'2D stack',icon:Layers},{id:'axial',label:'Axial',icon:ScanLine},{id:'coronal',label:'Coronal',icon:ScanLine},{id:'sagittal',label:'Sagittal',icon:ScanLine},{id:'volume',label:'3D volume',icon:Box}] as const).map(item => <Button key={item.id} variant={mode===item.id?'secondary':'ghost'} onClick={() => setMode(item.id)}><item.icon size={14}/>{item.label}</Button>)}<div className="flex-1"/><label><input type="checkbox" checked={viewer.cpu} onChange={e => viewer.setCPU(e.target.checked)}/> CPU 2D</label></div>
       <div className={`viewport-grid layout-${layout}`}>{slots.slice(0,layout).map((series,i) => series ? <Viewport key={`${i}-${series.series_uid}`} series={series} mode={mode} active={active===i} onActive={() => setActive(i)} onMetadata={id => void inspect(id)}/> : <div className={`empty-viewport ${active===i?'active':''}`} key={i} onClick={() => setActive(i)}><div className="empty-symbol"><Layers size={36}/></div><h2>{connected ? 'Your images. Your computer.' : 'Connect your local session'}</h2><p>{connected ? 'Import a DICOM study, then select a series from the archive.' : 'Use the MedVision launcher to open a protected session.'}</p><span>VIEWPORT {i+1}</span></div>)}</div>
-    </div>{showInfo && <aside className="metadata"><div className="section-heading">DICOM METADATA<Button size="icon" variant="ghost" onClick={() => setShowInfo(false)}><X size={15}/></Button></div>{metadata ? Object.entries(metadata).map(([tag,value]) => <div className="tag" key={tag}><code>{tag}</code><pre>{JSON.stringify(value,null,2)}</pre></div>) : <p>Select a stack image to inspect its metadata.</p>}</aside>}</main>
+    </div>{showMeasurements&&slots[active]&&<Measurements seriesUID={slots[active]!.series_uid} onError={setError}/>}{showInfo && <aside className="metadata"><div className="section-heading">DICOM METADATA<Button size="icon" variant="ghost" onClick={() => setShowInfo(false)}><X size={15}/></Button></div>{metadata ? Object.entries(metadata).map(([tag,value]) => <div className="tag" key={tag}><code>{tag}</code><pre>{JSON.stringify(value,null,2)}</pre></div>) : <p>Select a stack image to inspect its metadata.</p>}</aside>}</main>
     {error && <div className="error-banner" role="alert"><span>{error}</span><Button size="icon" variant="ghost" aria-label="Dismiss error" onClick={() => setError('')}><X size={16}/></Button></div>}
     <footer className="status-bar"><span className={`status-dot ${connected?'connected':''}`}/><span>{connected ? status : 'Awaiting launch session'}</span>{importing && <><progress max={1} value={job.progress}/><Button variant="ghost" onClick={() => void json(`/jobs/${job.id}/cancel`,{method:'POST'})}>Cancel import</Button></>}<div className="flex-1"/><span>MedVision 0.1 · Platform qualification pending</span></footer>
   </div>
