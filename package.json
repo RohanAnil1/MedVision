@@ -1,0 +1,87 @@
+{
+  "name": "medvision",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Offline educational and research DICOM workstation",
+  "author": "MedVision contributors",
+  "license": "MIT",
+  "type": "module",
+  "main": "desktop/main.cjs",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 3000 --strictPort",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 3000 --strictPort",
+    "start": "node scripts/launch.mjs",
+    "desktop": "electron .",
+    "test": "vitest run",
+    "test:browser": "playwright test",
+    "api:types": "node scripts/generate-types.mjs",
+    "package:win": "npm run build && electron-builder --win nsis --x64",
+    "package:mac": "npm run build && electron-builder --mac dmg --arm64 --x64"
+  },
+  "dependencies": {
+    "@cornerstonejs/core": "5.11.7",
+    "@cornerstonejs/dicom-image-loader": "5.11.7",
+    "@cornerstonejs/tools": "5.11.7",
+    "@kitware/vtk.js": "36.4.1",
+    "@radix-ui/react-dialog": "1.1.6",
+    "@radix-ui/react-tooltip": "1.1.8",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "events": "3.3.0",
+    "lucide-react": "0.468.0",
+    "punycode": "2.3.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "tailwind-merge": "2.6.0",
+    "zustand": "5.0.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.51.1",
+    "@types/node": "22.10.2",
+    "@types/punycode": "2.1.4",
+    "@types/react": "18.3.18",
+    "@types/react-dom": "18.3.5",
+    "@vitejs/plugin-react": "4.3.4",
+    "autoprefixer": "10.4.20",
+    "electron": "44.7.0",
+    "electron-builder": "26.0.12",
+    "openapi-typescript": "7.6.1",
+    "postcss": "8.5.3",
+    "tailwindcss": "3.4.17",
+    "typescript": "5.7.3",
+    "vite": "6.2.6",
+    "vitest": "3.1.1"
+  },
+  "build": {
+    "appId": "org.medvision.workstation",
+    "productName": "MedVision",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "desktop/**/*",
+      "scripts/server.mjs",
+      "dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "build/backend",
+        "to": "backend"
+      }
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.medical"
+    }
+  }
+}

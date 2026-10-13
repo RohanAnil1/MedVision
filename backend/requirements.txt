@@ -1,0 +1,15 @@
+fastapi==0.115.12
+uvicorn==0.34.2
+pydicom==3.0.2
+numpy==2.2.5
+scipy==1.15.3
+SimpleITK==2.5.2
+opencv-python-headless==4.11.0.86
+python-multipart==0.0.20
+pylibjpeg==2.0.1
+pylibjpeg-libjpeg==2.3.0
+pylibjpeg-openjpeg==2.5.0
+pyjpegls==1.5.1
+pynetdicom==3.0.4
+Pillow==11.2.1
+reportlab==4.4.0
